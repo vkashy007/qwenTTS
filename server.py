@@ -154,11 +154,6 @@ async def tts_stream(
     if engine is None:
         raise HTTPException(503, "Model not loaded yet.")
 
-    # Default instruct when doing voice clone: teacher persona
-    effective_instruct = instruct
-    if effective_instruct is None and (ref_audio or speaker_token):
-        effective_instruct = TEACHER_INSTRUCT
-
     speaker_cache_entry = None
     tmp_path = None
 
@@ -184,6 +179,13 @@ async def tts_stream(
     else:
         ref_audio_path = None
         ref_text_str = ""
+
+    # Resolve effective instruct — priority: caller > speaker default > global teacher default > None
+    effective_instruct = instruct
+    if effective_instruct is None and speaker_cache_entry is not None:
+        effective_instruct = speaker_cache_entry.get("default_instruct") or TEACHER_INSTRUCT
+    elif effective_instruct is None and ref_audio is not None:
+        effective_instruct = TEACHER_INSTRUCT
 
     if ref_audio_path is None and speaker_cache_entry is None and not effective_instruct:
         raise HTTPException(
@@ -262,6 +264,10 @@ async def register_speaker(
         None,
         description="Pass 'true' for faster x-vector-only mode (lower quality)",
     ),
+    default_instruct: Optional[str] = Form(
+        None,
+        description="Default style prompt for this speaker. If omitted, uses the global teacher persona.",
+    ),
 ) -> dict:
     """
     Pre-compute a voice clone prompt and cache it server-side.
@@ -283,6 +289,7 @@ async def register_speaker(
             ref_audio=tmp.name,
             ref_text=ref_text,
             xvec_only=use_xvec,
+            default_instruct=default_instruct,
         )
     finally:
         try:

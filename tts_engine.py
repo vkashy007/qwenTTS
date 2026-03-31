@@ -76,10 +76,14 @@ class TTSEngine:
         ref_audio: Union[str, Path],
         ref_text: str,
         xvec_only: bool = False,
+        default_instruct: Optional[str] = None,
     ) -> dict:
         """
         Read the reference audio file and return a cache entry dict.
         Store the returned dict; pass it to stream() as speaker_cache_entry=.
+
+        default_instruct is used on every /tts/stream call for this speaker
+        unless the caller overrides it with their own instruct= value.
         """
         ref_path = Path(ref_audio)
         return {
@@ -87,6 +91,7 @@ class TTSEngine:
             "suffix": ref_path.suffix or ".wav",
             "ref_text": ref_text,
             "xvec_only": xvec_only,
+            "default_instruct": default_instruct,
         }
 
     # ------------------------------------------------------------------
